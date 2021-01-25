@@ -35,9 +35,6 @@ static void on_applet_hook(AppletHookType hook, void *arg) {
                 }
             }
             break;
-        case AppletHookType_OnPerformanceMode:
-            break;
-
         default:
             break;
     }
@@ -68,7 +65,7 @@ Main::Main(const c2d::Vector2f &size) : C2DRenderer(size) {
     // font
     font = new C2DFont();
     font->loadFromFile(getIo()->getRomFsPath() + "skin/font.ttf");
-    font->setFilter(Texture::Filter::Point);
+    font->setFilter(Texture::Filter::Linear);
     font->setOffset({0, -4});
 
     statusBox = new StatusBox(this, {0, getSize().y - 16});
@@ -99,7 +96,9 @@ Main::Main(const c2d::Vector2f &size) : C2DRenderer(size) {
     // main menu
     std::vector<MenuItem> items;
     items.emplace_back("Home", "home.png", MenuItem::Position::Top);
-    items.emplace_back("USB", "usb.png", MenuItem::Position::Top);
+#ifdef __SWITCH__
+    items.emplace_back("Usb", "usb.png", MenuItem::Position::Top);
+#endif
     items.emplace_back("Network", "network.png", MenuItem::Position::Top);
     items.emplace_back("Options", "options.png", MenuItem::Position::Top);
     items.emplace_back("Exit", "exit.png", MenuItem::Position::Bottom);
@@ -131,6 +130,8 @@ Main::Main(const c2d::Vector2f &size) : C2DRenderer(size) {
     messageBox->setOutlineThickness(2);
     messageBox->getTitleText()->setOutlineThickness(0);
     messageBox->getMessageText()->setOutlineThickness(0);
+    messageBox->getButton(0)->setOutlineThickness(3);
+    messageBox->getButton(1)->setOutlineThickness(3);
     add(messageBox);
 
     scrapper = new Scrapper(this);
@@ -162,34 +163,32 @@ bool Main::onInput(c2d::Input::Player *players) {
         } else {
             quit();
         }
-    } else if (keys & Input::Touch) {
-#if 0
-        if (player->getGlobalBounds().contains(players[0].touch)) {
-            if (!player->getMpv()->isStopped() && !player->isFullscreen()) {
-                player->setFullscreen(true);
-                return true;
-            }
-        }
-#endif
     }
 
     return Renderer::onInput(players);
 }
 
-void Main::onDraw(c2d::Transform &transform, bool draw) {
+void Main::onUpdate() {
 
     unsigned int keys = getInput()->getKeys(0);
-
     if (keys != Input::Key::Delay) {
-        if (keys && timer->getElapsedTime().asMilliseconds() > INPUT_DELAY) {
-            getInput()->setRepeatDelay(INPUT_DELAY / 5);
-        } else if (!keys) {
+        bool changed = (oldKeys ^ keys) != 0;
+        oldKeys = keys;
+        if (!changed) {
+            if (timer->getElapsedTime().asSeconds() > 5) {
+                getInput()->setRepeatDelay(INPUT_DELAY / 20);
+            } else if (timer->getElapsedTime().asSeconds() > 3) {
+                getInput()->setRepeatDelay(INPUT_DELAY / 8);
+            } else if (timer->getElapsedTime().asSeconds() > 1) {
+                getInput()->setRepeatDelay(INPUT_DELAY / 4);
+            }
+        } else {
             getInput()->setRepeatDelay(INPUT_DELAY);
             timer->restart();
         }
     }
 
-    C2DObject::onDraw(transform);
+    C2DRenderer::onUpdate();
 }
 
 void Main::show(MenuType type) {
@@ -200,18 +199,24 @@ void Main::show(MenuType type) {
 
     filer->setVisibility(Visibility::Visible, true);
     if (type == MenuType::Home) {
+#ifdef __SWITCH__
         usbHsFsExit();
+#endif
         std::string path = config->getOption(OPT_HOME_PATH)->getString();
         if (!filer->getDir(path)) {
             if (filer->getDir("/")) {
                 filer->clearHistory();
             }
         }
-    } else if (type == MenuType::USB) {
+#ifdef __SWITCH__
+    } else if (type == MenuType::Usb) {
         usbInit();
         filer->getDir(config->getOption(OPT_UMS_DEVICE)->getString());
+#endif
     } else {
+#ifdef __SWITCH__
         usbHsFsExit();
+#endif
         std::string path = config->getOption(OPT_NETWORK)->getString();
         if (!filer->getDir(path)) {
             messageBox->show("OOPS", filer->getError(), "OK");
@@ -305,7 +310,7 @@ int main() {
     Vector2f size = {1280, 720};
 
 #ifdef __SWITCH__
-#ifndef __NET_DEBUG__
+#ifdef NDEBUG
     socketInitializeDefault();
 #endif
     appletMainLoop();
@@ -332,7 +337,7 @@ int main() {
     usbHsFsExit();
     appletUnhook(&applet_hook_cookie);
     appletUnlockExit();
-#ifndef __NET_DEBUG__
+#ifdef NDEBUG
     socketExit();
 #endif
 #endif

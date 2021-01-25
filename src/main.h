@@ -48,7 +48,9 @@ public:
         Home,
         Network,
         Current,
-        USB
+#ifdef __SWITCH__
+        Usb
+#endif
     };
 
     enum class FontSize {
@@ -101,7 +103,7 @@ private:
 
     bool onInput(c2d::Input::Player *players) override;
 
-    void onDraw(c2d::Transform &transform, bool draw = true) override;
+    void onUpdate() override;
 
     pplay::Io *pplayIo = nullptr;
     c2d::Font *font = nullptr;
@@ -115,6 +117,7 @@ private:
     MenuMain *menu_main = nullptr;
     MenuVideo *menu_video = nullptr;
     pplay::Scrapper *scrapper = nullptr;
+    unsigned int oldKeys = 0;
     float scaling = 1;
 
     bool exit = false;

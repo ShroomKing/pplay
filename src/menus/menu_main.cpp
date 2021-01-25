@@ -2,7 +2,6 @@
 // Created by cpasjuste on 07/12/18.
 //
 
-#include "cross2d/c2d.h"
 #include "main.h"
 #include "menu_main.h"
 
@@ -13,10 +12,10 @@ MenuMain::MenuMain(Main *main, const c2d::FloatRect &rect, const std::vector<Men
 
     std::vector<MenuItem> it;
 
-    // buffering options
     it.emplace_back(OPT_CPU_BOOST, "cpu.png", MenuItem::Position::Top);
+#ifdef __SWITCH__
     it.emplace_back(OPT_UMS_DEVICE, "usb.png", MenuItem::Position::Top);
-    //it.emplace_back(OPT_BUFFER, "buffering.png", MenuItem::Position::Top);
+#endif
     menuMainOptions = new MenuMainOptions(main, rect, it);
     menuMainOptions->setLayer(2);
     menuMainOptions->setVisibility(Visibility::Hidden, false);
@@ -32,6 +31,7 @@ MenuMain::MenuMain(Main *main, const c2d::FloatRect &rect, const std::vector<Men
     menuMainOptionsCpu->setSelection(main->getConfig()->getOption(OPT_CPU_BOOST)->getString());
     main->add(menuMainOptionsCpu);
 
+#ifdef __SWITCH__
     std::string umsPath;
     it.clear();
     for(int i = 0; i <= 9; i++) {
@@ -43,21 +43,7 @@ MenuMain::MenuMain(Main *main, const c2d::FloatRect &rect, const std::vector<Men
     menuMainOptionsUsb->setVisibility(Visibility::Hidden, false);
     menuMainOptionsUsb->setSelection(main->getConfig()->getOption(OPT_UMS_DEVICE)->getString());
     main->add(menuMainOptionsUsb);
-
-#if 0
-    // Buffering
-    it.clear();
-    it.emplace_back("Low", "", MenuItem::Position::Top);
-    it.emplace_back("Medium", "", MenuItem::Position::Top);
-    it.emplace_back("High", "", MenuItem::Position::Top);
-    it.emplace_back("VeryHigh", "", MenuItem::Position::Top);
-    menuMainOptionsBuffer = new MenuMainOptionsSubmenu(main, rect, OPT_BUFFER, it, OPT_BUFFER);
-    menuMainOptionsBuffer->setLayer(2);
-    menuMainOptionsBuffer->setVisibility(Visibility::Hidden, false);
-    menuMainOptionsBuffer->setSelection(main->getConfig()->getOption(OPT_BUFFER)->getString());
-    main->add(menuMainOptionsBuffer);
 #endif
-
 }
 
 void MenuMain::onOptionSelection(MenuItem *item) {
@@ -70,9 +56,11 @@ void MenuMain::onOptionSelection(MenuItem *item) {
     } else if (item->name == "Options") {
         setVisibility(Visibility::Hidden, true);
         menuMainOptions->setVisibility(Visibility::Visible);
-    } else if (item->name == "USB") {
-        setVisibility(Visibility::Hidden, true);
-        main->show(Main::MenuType::USB);
+#ifdef __SWITCH__
+        } else if (item->name == "USB") {
+            setVisibility(Visibility::Hidden, true);
+            main->show(Main::MenuType::Usb);
+#endif
     } else if (item->name == "Exit") {
         main->quit();
     }
@@ -99,9 +87,11 @@ bool MenuMain::onInput(c2d::Input::Player *players) {
 bool MenuMain::isMenuVisible() {
     return isVisible()
            || menuMainOptions->isVisible()
-           //|| menuMainOptionsBuffer->isVisible()
            || menuMainOptionsCpu->isVisible()
-           || menuMainOptionsUsb->isVisible();
+#ifdef __SWITCH__
+            || menuMainOptionsUsb->isVisible()
+#endif
+            ;
 }
 
 MenuMainOptions *MenuMain::getMenuMainOptions() {
@@ -109,17 +99,13 @@ MenuMainOptions *MenuMain::getMenuMainOptions() {
 }
 
 MenuMainOptionsSubmenu *MenuMain::getMenuMainOptionsSubmenu(const std::string &name) {
-#if 0
-    if (name == OPT_BUFFER) {
-        return menuMainOptionsBuffer;
-    }
-#endif
     if (name == OPT_CPU_BOOST) {
         return menuMainOptionsCpu;
     }
+#ifdef __SWITCH__
     if (name == OPT_UMS_DEVICE) {
         return menuMainOptionsUsb;
     }
-
+#endif
     return nullptr;
 }
